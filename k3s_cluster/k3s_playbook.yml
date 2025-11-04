@@ -62,6 +62,9 @@
       when: 
         - host_type is defined and host_type == "drone"
       register: k3s_agent_install
+      retries: 5
+      delay: 15
+      until: k3s_agent_install.rc == 0
       
     - name: Wait for K3s to be ready
       pause:
