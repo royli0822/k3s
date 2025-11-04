@@ -1,0 +1,7 @@
+apiVersion: configd/v1
+kind: TaskList
+metadata:
+  name: k3s-installation
+
+cmd: >-
+  ansible-playbook k3s_playbook.yml -e "@ansible-vars-config/vars.yml"

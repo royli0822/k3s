@@ -1,0 +1,114 @@
+---
+- name: Install K3s directly on host
+  hosts: localhost
+  connection: local
+  become: yes
+  vars:
+    k3s_token: "pegasus_k3s_server_token"
+    k3s_install_script: "/tmp/k3s-install.sh"
+    
+  tasks:
+    - name: Check if K3s is already installed
+      stat:
+        path: /usr/local/bin/k3s
+      register: k3s_binary
+
+    - name: Check if K3s service exists
+      stat:
+        path: /etc/systemd/system/k3s.service
+      register: k3s_service_file
+      when: host_type is defined and host_type == "rc"
+
+    - name: Check if K3s agent service exists
+      stat:
+        path: /etc/systemd/system/k3s-agent.service
+      register: k3s_agent_service_file
+      when: host_type is defined and host_type == "drone"
+
+    - name: Uninstall K3s if binary exists but service doesn't
+      shell: /usr/local/bin/k3s-uninstall.sh
+      when: 
+        - k3s_binary.stat.exists
+        - host_type is defined and host_type == "rc"
+#        - not k3s_service_file.stat.exists
+      ignore_errors: yes
+
+    - name: Uninstall K3s agent if binary exists but service doesn't
+      shell: /usr/local/bin/k3s-agent-uninstall.sh
+      when: 
+        - k3s_binary.stat.exists
+        - host_type is defined and host_type == "drone"
+#        - not k3s_agent_service_file.stat.exists
+      ignore_errors: yes
+
+    - name: Download K3s installation script
+      get_url:
+        url: https://get.k3s.io
+        dest: "{{ k3s_install_script }}"
+        mode: '0755'
+        force: yes
+      register: download_script
+
+    - name: Install K3s Server (for rc hosts)
+      shell: |
+        K3S_TOKEN="{{ k3s_token }}" {{ k3s_install_script }}
+      when: 
+        - host_type is defined and host_type == "rc"
+      register: k3s_server_install
+
+    - name: Install K3s Agent (for drone hosts)
+      shell: |
+        K3S_URL=https://{{ controller_addr }}:6443 K3S_TOKEN="{{ k3s_token }}" {{ k3s_install_script }}
+      when: 
+        - host_type is defined and host_type == "drone"
+      register: k3s_agent_install
+      
+    - name: Wait for K3s to be ready
+      pause:
+        seconds: 15
+      when: k3s_server_install.changed or k3s_agent_install.changed
+
+    - name: Check if K3s service exists (Server)
+      systemd:
+        name: k3s
+        state: started
+        enabled: yes
+      when: host_type is defined and host_type == "rc"
+      register: k3s_service_status
+      failed_when: false
+
+    - name: Check if K3s service exists (Agent)
+      systemd:
+        name: k3s-agent
+        state: started
+        enabled: yes
+      when: host_type is defined and host_type == "drone"
+      register: k3s_agent_service_status
+      failed_when: false
+
+    - name: Reload systemd if service file was created
+      systemd:
+        daemon_reload: yes
+      when: k3s_server_install.changed or k3s_agent_install.changed
+
+    - name: Get K3s version
+      command: k3s --version
+      register: k3s_version
+      changed_when: false
+
+    - name: Display K3s version
+      debug:
+        msg: "K3s installed: {{ k3s_version.stdout }}"
+
+    - name: Get node status (Server only)
+      command: k3s kubectl get nodes
+      register: k3s_nodes
+      changed_when: false
+      failed_when: false
+      when: host_type is defined and host_type == "rc"
+
+    - name: Display nodes
+      debug:
+        msg: "{{ k3s_nodes.stdout_lines }}"
+      when: host_type is defined and host_type == "rc" and k3s_nodes.rc == 0
+      

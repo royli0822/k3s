@@ -1,0 +1,9 @@
+# for RC
+host_type: rc
+
+# for drone
+#host_type: drone
+# it's RC nebula ip
+#controller_addr: 10.96.157.15
+
+
