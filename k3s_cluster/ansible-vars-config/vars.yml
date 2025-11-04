@@ -1,11 +1,12 @@
+# for custom k3s token
+#k3s_token: pegasus_k3s_server_token
+
 # for RC
 host_type: rc
-k3s_token: pegasus_k3s_server_token
 
 # for drone
 #host_type: drone
 # it's RC nebula ip
 #controller_addr: 10.96.157.15
-#k3s_token: pegasus_k3s_server_token
 
 

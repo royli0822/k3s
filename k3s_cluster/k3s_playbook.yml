@@ -29,7 +29,7 @@
       shell: /usr/local/bin/k3s-uninstall.sh
       when: 
         - k3s_binary.stat.exists
-        - host_type is defined and host_type == "rc"
+#        - host_type is defined and host_type == "rc"
 #        - not k3s_service_file.stat.exists
       ignore_errors: yes
 
@@ -37,7 +37,7 @@
       shell: /usr/local/bin/k3s-agent-uninstall.sh
       when: 
         - k3s_binary.stat.exists
-        - host_type is defined and host_type == "drone"
+#        - host_type is defined and host_type == "drone"
 #        - not k3s_agent_service_file.stat.exists
       ignore_errors: yes
 
@@ -91,6 +91,28 @@
         daemon_reload: yes
       when: k3s_server_install.changed or k3s_agent_install.changed
 
+    - name: Create .kube directory for current user
+      file:
+        path: "{{ ansible_env.HOME }}/.kube"
+        state: directory
+        mode: '0755'
+      when: host_type is defined and host_type == "rc"
+
+    - name: Copy k3s kubeconfig to user's .kube directory
+      copy:
+        src: /etc/rancher/k3s/k3s.yaml
+        dest: "{{ ansible_env.HOME }}/.kube/config"
+        remote_src: yes
+        mode: '0600'
+      when: host_type is defined and host_type == "rc"
+
+    - name: Set kubeconfig ownership
+      file:
+        path: "{{ ansible_env.HOME }}/.kube/config"
+        owner: "{{ ansible_env.USER }}"
+        group: "{{ ansible_env.USER }}"
+      when: host_type is defined and host_type == "rc"
+ 
     - name: Get K3s version
       command: k3s --version
       register: k3s_version
