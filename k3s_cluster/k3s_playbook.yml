@@ -51,7 +51,7 @@
 
     - name: Install K3s Server (for rc hosts)
       shell: |
-        K3S_TOKEN="{{ k3s_token }}" {{ k3s_install_script }}
+        INSTALL_K3S_EXEC="--cluster-cidr {{ cluster_cidr | default('10.244.0.0/16') }} --service-cidr {{ service_cidr | default('10.96.0.0/16') }}" K3S_TOKEN="{{ k3s_token }}" {{ k3s_install_script }}
       when: 
         - host_type is defined and host_type == "rc"
       register: k3s_server_install

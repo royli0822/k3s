@@ -3,6 +3,8 @@
 
 # for RC
 host_type: rc
+cluster_cidr: 10.244.0.0/16
+service_cidr: 10.96.0.0/16
 
 # for drone
 #host_type: drone
